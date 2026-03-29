@@ -1,0 +1,7 @@
+name: boot-md
+description: >
+  Run BOOT.md on gateway startup. Drop a BOOT.md file in ~/.hermes/
+  with instructions for the agent to execute on every gateway restart.
+  Useful for startup checks, notifications, and resuming pending tasks.
+events:
+  - gateway:startup

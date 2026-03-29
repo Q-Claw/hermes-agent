@@ -88,6 +88,62 @@ Handlers registered for `command:*` fire for any `command:` event (`command:mode
 
 ### Examples
 
+#### Boot Checklist (BOOT.md)
+
+Run a markdown checklist on every gateway startup — health checks, notifications, task resumption. This is a bundled example hook shipped with Hermes.
+
+**Install:**
+
+```bash
+cp -r ~/.hermes/hermes-agent/gateway/example-hooks/boot-md ~/.hermes/hooks/boot-md
+```
+
+**Create `~/.hermes/BOOT.md`:**
+
+```markdown
+# Startup Checklist
+
+1. Check if any cron jobs failed overnight — run `hermes cron list`
+2. Send a message to Discord #general saying "Gateway restarted, all systems go"
+3. Check if /opt/app/deploy.log has any errors from the last 24 hours
+```
+
+The agent runs these instructions in a background thread on every gateway restart. If nothing needs attention, it replies with `[SILENT]` and no message is delivered.
+
+```yaml
+# ~/.hermes/hooks/boot-md/HOOK.yaml
+name: boot-md
+description: Run BOOT.md on gateway startup
+events:
+  - gateway:startup
+```
+
+```python
+# ~/.hermes/hooks/boot-md/handler.py (simplified)
+from pathlib import Path
+import threading
+
+BOOT_FILE = Path.home() / ".hermes" / "BOOT.md"
+
+async def handle(event_type: str, context: dict):
+    if not BOOT_FILE.exists():
+        return
+    content = BOOT_FILE.read_text().strip()
+    if not content:
+        return
+    # Spawns agent in background thread — see full source in
+    # gateway/example-hooks/boot-md/handler.py
+    from run_agent import AIAgent
+    def run():
+        agent = AIAgent(quiet_mode=True, skip_context_files=True, max_iterations=20)
+        agent.run_conversation(f"Run this boot checklist:\n{content}")
+    threading.Thread(target=run, daemon=True).start()
+```
+
+:::tip
+The full handler includes proper error handling, [SILENT] suppression, and a structured boot prompt. Copy the example hook directory to get the production version.
+:::
+
 #### Telegram Alert on Long Tasks
 
 Send yourself a message when the agent takes more than 10 steps:
